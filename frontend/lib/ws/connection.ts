@@ -45,6 +45,14 @@ export class AgentConnection {
         if (this.status === 'RESUMING') {
           this.setStatus('LIVE');
         }
+
+        if (message.type === 'TOOL_CALL') {
+          this.send({
+            type: 'TOOL_ACK',
+            call_id: message.call_id,
+          });
+        }
+
         this.onMessageCallback(message);
       },
     });
