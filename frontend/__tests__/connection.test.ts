@@ -102,8 +102,9 @@ describe('AgentConnection FSM', () => {
       type: 'PONG',
       echo: 'ch123',
     });
-    expect(onMessage).toHaveBeenCalledTimes(1);
-    expect(onMessage.mock.calls[0][0].type).toBe('PING');
+    expect(onMessage).toHaveBeenCalledTimes(2);
+    expect(onMessage.mock.calls[0][0].type).toBe('PONG');
+    expect(onMessage.mock.calls[1][0].type).toBe('PING');
   });
 
   it('should handle corrupt PING (missing challenge) without crashing', () => {
