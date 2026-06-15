@@ -1,4 +1,3 @@
-/*
 // components/context/SnapshotScrubber.tsx
 'use client';
 
@@ -31,6 +30,7 @@ export const SnapshotScrubber: React.FC<SnapshotScrubberProps> = ({
 
   return (
     <div className="bg-zinc-950/40 border-b border-zinc-800/60 p-3 flex flex-col space-y-2 select-none">
+      {/* Label and Info */}
       <div className="flex items-center justify-between text-[10px] font-mono">
         <div className="flex items-center space-x-2">
           <span className="text-zinc-400 font-bold uppercase tracking-wider">Scrubber</span>
@@ -52,7 +52,9 @@ export const SnapshotScrubber: React.FC<SnapshotScrubberProps> = ({
         )}
       </div>
 
+      {/* Slider & Step Controls */}
       <div className="flex items-center space-x-3">
+        {/* Prev Button */}
         <button
           onClick={() => onIndexChange(currentIndex - 1)}
           disabled={isDisabled || isFirst}
@@ -62,6 +64,7 @@ export const SnapshotScrubber: React.FC<SnapshotScrubberProps> = ({
           ◀
         </button>
 
+        {/* Range Slider */}
         <input
           type="range"
           min={0}
@@ -72,6 +75,7 @@ export const SnapshotScrubber: React.FC<SnapshotScrubberProps> = ({
           className="flex-1 accent-amber-500 h-1.5 bg-zinc-900 rounded-lg appearance-none cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
         />
 
+        {/* Next Button */}
         <button
           onClick={() => onIndexChange(currentIndex + 1)}
           disabled={isDisabled || isLast}
@@ -81,6 +85,7 @@ export const SnapshotScrubber: React.FC<SnapshotScrubberProps> = ({
           ▶
         </button>
 
+        {/* Jump to Live Button */}
         <button
           onClick={() => onIndexChange(total - 1)}
           disabled={isDisabled || isLast}
@@ -92,5 +97,3 @@ export const SnapshotScrubber: React.FC<SnapshotScrubberProps> = ({
     </div>
   );
 };
-*/
-export const SnapshotScrubber = () => null;
