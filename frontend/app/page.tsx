@@ -40,15 +40,16 @@ export default function Home() {
       onMessage: (message) => {
         setLastSeq(connection.getLastSeq());
         trace.logEvent(message);
-        const msgType = (message as any).type;
+        const anyMsg = message as any;
+        const msgType = anyMsg.type;
         if (msgType === 'TOKEN') {
-          stream.handleToken(message.stream_id, message.text);
+          stream.handleToken(anyMsg.stream_id, anyMsg.text);
         } else if (msgType === 'TOOL_CALL') {
-          stream.handleToolCall(message.stream_id, message.call_id, message.tool_name, message.args);
+          stream.handleToolCall(anyMsg.stream_id, anyMsg.call_id, anyMsg.tool_name, anyMsg.args);
         } else if (msgType === 'TOOL_ACK') {
-          stream.handleToolAck(message.stream_id, message.call_id);
+          stream.handleToolAck(anyMsg.stream_id, anyMsg.call_id);
         } else if (msgType === 'TOOL_RESULT') {
-          stream.handleToolResult(message.stream_id, message.call_id, message.result);
+          stream.handleToolResult(anyMsg.stream_id, anyMsg.call_id, anyMsg.result);
         }
       },
     });
