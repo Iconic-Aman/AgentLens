@@ -37,12 +37,9 @@ export const Header: React.FC<HeaderProps> = ({ status, lastSeq }) => {
               alt="Alchemyst AI"
               loading="lazy"
               width={200}
-              height={200}
-              decoding="async"
+              height={50}
               className="h-6 sm:h-8 w-auto object-contain"
-              style={{ color: 'transparent' }}
-              srcSet="/_next/image?url=%2Flogo.png&w=256&q=75&dpl=dpl_8qzw5BeMCgqPgS7ZgEpqU9s6YEDj 1x, /_next/image?url=%2Flogo.png&w=640&q=75&dpl=dpl_8qzw5BeMCgqPgS7ZgEpqU9s6YEDj 2x"
-              src="/_next/image?url=%2Flogo.png&w=640&q=75&dpl=dpl_8qzw5BeMCgqPgS7ZgEpqU9s6YEDj"
+              src="/logo.png"
             />
           </a>
           <span className="text-zinc-500 text-[10px] sm:text-xs font-semibold uppercase tracking-wider border border-zinc-800 px-1.5 py-0.5 rounded bg-zinc-900/40">

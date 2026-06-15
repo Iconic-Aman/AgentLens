@@ -8,6 +8,8 @@ interface ToolCallCardProps {
   args: Record<string, any>;
   result?: Record<string, any>;
   status: 'pending' | 'acked' | 'completed';
+  isHighlighted?: boolean;
+  onClick?: () => void;
 }
 
 export const ToolCallCard: React.FC<ToolCallCardProps> = ({
@@ -15,6 +17,8 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({
   args,
   result,
   status,
+  isHighlighted = false,
+  onClick,
 }) => {
   const getStatusBadge = () => {
     switch (status) {
@@ -40,7 +44,14 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({
   };
 
   return (
-    <div className="my-4 bg-zinc-900/60 border border-zinc-800 rounded-xl overflow-hidden shadow-lg shadow-black/10 backdrop-blur-sm max-w-2xl w-full">
+    <div
+      onClick={onClick}
+      className={`my-4 overflow-hidden rounded-xl shadow-lg shadow-black/10 backdrop-blur-sm max-w-2xl w-full border transition-all cursor-pointer ${
+        isHighlighted
+          ? 'bg-amber-950/10 border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.25)] ring-1 ring-amber-500/30'
+          : 'bg-zinc-900/60 border-zinc-850 hover:border-zinc-800'
+      }`}
+    >
       {/* Card Header */}
       <div className="bg-zinc-950/40 border-b border-zinc-800/60 px-4 py-2.5 flex items-center justify-between">
         <div className="flex items-center space-x-2">
