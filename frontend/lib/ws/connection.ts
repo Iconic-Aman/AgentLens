@@ -51,6 +51,10 @@ export class AgentConnection {
             type: 'TOOL_ACK',
             call_id: message.call_id,
           });
+          this.onMessageCallback({
+            type: 'TOOL_ACK',
+            call_id: message.call_id,
+          } as any);
         }
 
         this.onMessageCallback(message);
@@ -140,6 +144,11 @@ export class AgentConnection {
         if (message.type === 'PING') {
           const pong = handlePing(message);
           this.send(pong);
+          this.onMessageCallback({
+            type: 'PONG',
+            seq: message.seq,
+            echo: pong.echo,
+          } as any);
         }
         
         this.buffer.enqueue(message);
