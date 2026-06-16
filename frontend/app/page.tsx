@@ -1,58 +1,16 @@
 // app/page.tsx
 'use client';
 
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Header } from '../components/Header';
 import { Controls } from '../components/Controls';
 import { StreamingText } from '../components/chat/StreamingText';
 import { ToolCallCard } from '../components/chat/ToolCallCard';
 import { TraceTimeline } from '../components/trace/TraceTimeline';
-import { JsonTree } from '../components/context/JsonTree';
-import { SnapshotScrubber } from '../components/context/SnapshotScrubber';
-import { computeJsonDiff } from '../lib/diff/json-diff';
+import { ContextInspector, ContextSnapshotHistoryItem } from '../components/context/ContextInspector';
 import { AgentConnection, ConnectionStatus } from '../lib/ws/connection';
 import { StreamManager, ChatMessage } from '../lib/ws/stream-manager';
 import { TraceManager, TraceEvent } from '../lib/ws/trace-manager';
-
-// Mock snapshot history to test Feature 2 and Feature 3 in combination
-const mockSnapshots = [
-  {
-    msg: {
-      type: 'CONTEXT_SNAPSHOT' as const,
-      seq: 2,
-      context_id: 'ctx_user_123',
-      data: {
-        user: { name: 'Alice', age: 30, roles: ['admin'] },
-        settings: { theme: 'dark', notifications: true }
-      }
-    },
-    timestamp: 1774872000000,
-  },
-  {
-    msg: {
-      type: 'CONTEXT_SNAPSHOT' as const,
-      seq: 4,
-      context_id: 'ctx_user_123',
-      data: {
-        user: { name: 'Alice', age: 31, roles: ['admin'] },
-        settings: { theme: 'dark', notifications: true }
-      }
-    },
-    timestamp: 1774872005000,
-  },
-  {
-    msg: {
-      type: 'CONTEXT_SNAPSHOT' as const,
-      seq: 6,
-      context_id: 'ctx_user_123',
-      data: {
-        user: { name: 'Alice', age: 31, roles: ['admin', 'developer'] },
-        settings: { theme: 'dark', notifications: true }
-      }
-    },
-    timestamp: 1774872010000,
-  }
-];
 
 export default function Home() {
   const [status, setStatus] = useState<ConnectionStatus>('IDLE');
@@ -65,8 +23,10 @@ export default function Home() {
   const [input, setInput] = useState('');
   const [lastSeq, setLastSeq] = useState(0);
 
-  // Scrubber index state for local testing
-  const [scrubberIndex, setScrubberIndex] = useState(2);
+  // Context history states
+  const [snapshots, setSnapshots] = useState<ContextSnapshotHistoryItem[]>([]);
+  const [scrubberIndex, setScrubberIndex] = useState(0);
+  const [activeContextId, setActiveContextId] = useState<string | null>(null);
 
   const connectionRef = useRef<AgentConnection | null>(null);
   const streamManagerRef = useRef<StreamManager | null>(null);
@@ -98,6 +58,18 @@ export default function Home() {
           stream.handleToolAck(anyMsg.stream_id, anyMsg.call_id);
         } else if (msgType === 'TOOL_RESULT') {
           stream.handleToolResult(anyMsg.stream_id, anyMsg.call_id, anyMsg.result);
+        } else if (msgType === 'CONTEXT_SNAPSHOT') {
+          setSnapshots((prev) => {
+            const nextList = [...prev, { msg: anyMsg, timestamp: Date.now() }];
+            setScrubberIndex((prevIdx) => {
+              if (prevIdx === prev.length - 1 || prev.length === 0) {
+                return nextList.length - 1;
+              }
+              return prevIdx;
+            });
+            return nextList;
+          });
+          setActiveContextId(anyMsg.context_id);
         }
       },
     });
@@ -116,6 +88,9 @@ export default function Home() {
     setLastSeq(0);
     setHighlightedId(null);
     setHighlightedCallId(null);
+    setSnapshots([]);
+    setScrubberIndex(0);
+    setActiveContextId(null);
     streamManagerRef.current?.clear();
     traceManagerRef.current?.clear();
   };
@@ -148,18 +123,6 @@ export default function Home() {
     }
   };
 
-  // Compute mock diff on the fly based on current scrubber selection
-  const currentDiff = useMemo(() => {
-    const currentVal = mockSnapshots[scrubberIndex].msg.data;
-    if (scrubberIndex === 0) {
-      return computeJsonDiff({}, currentVal);
-    }
-    const prevVal = mockSnapshots[scrubberIndex - 1].msg.data;
-    return computeJsonDiff(prevVal, currentVal);
-  }, [scrubberIndex]);
-
-  const activeItem = mockSnapshots[scrubberIndex];
-
   return (
     <div className="min-h-screen bg-[#0B0B0C] text-zinc-100 flex flex-col font-sans selection:bg-amber-500/30 selection:text-amber-200">
       <Header status={status} lastSeq={lastSeq} />
@@ -173,6 +136,7 @@ export default function Home() {
           onSubmit={handleSendMessage}
         />
 
+        {/* 3-Panel Workspace */}
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-[480px]">
           {/* Panel 1: Streaming Chat */}
           <div className="bg-zinc-900 border border-zinc-800/60 rounded-xl flex flex-col overflow-hidden h-full">
@@ -227,22 +191,13 @@ export default function Home() {
             }}
           />
 
-          {/* Panel 3: Interactive Inspector Panel (Features 2 & 3 testing) */}
-          <div className="bg-zinc-900 border border-zinc-800/60 rounded-xl flex flex-col overflow-hidden h-full">
-            <div className="border-b border-zinc-800/60 px-4 py-2.5 bg-zinc-950/40 flex items-center justify-between">
-              <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider font-mono">Mock Inspector (Features 2+3)</span>
-            </div>
-            <SnapshotScrubber
-              currentIndex={scrubberIndex}
-              total={mockSnapshots.length}
-              onIndexChange={setScrubberIndex}
-              currentSeq={activeItem.msg.seq}
-              currentTimestamp={activeItem.timestamp}
-            />
-            <div className="flex-1 p-4 overflow-y-auto max-h-[400px] bg-zinc-950/20">
-              <JsonTree value={activeItem.msg.data} diff={currentDiff} />
-            </div>
-          </div>
+          {/* Panel 3: Context Inspector */}
+          <ContextInspector
+            snapshots={snapshots}
+            currentIndex={scrubberIndex}
+            onIndexChange={setScrubberIndex}
+            activeContextId={activeContextId}
+          />
         </div>
       </main>
     </div>

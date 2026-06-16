@@ -21,6 +21,17 @@ export const Controls: React.FC<ControlsProps> = ({
   onDisconnect,
   onSubmit,
 }) => {
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const isConnectDisabled = mounted ? status !== 'IDLE' : false;
+  const isDisconnectDisabled = mounted ? status === 'IDLE' : true;
+  const isInputDisabled = mounted ? (status !== 'LIVE' && status !== 'RESUMING') : true;
+  const isSendDisabled = mounted ? (!input.trim() || (status !== 'LIVE' && status !== 'RESUMING')) : true;
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
       {/* Session Control */}
@@ -32,14 +43,14 @@ export const Controls: React.FC<ControlsProps> = ({
         <div className="flex space-x-2">
           <button
             onClick={onConnect}
-            disabled={status !== 'IDLE'}
+            disabled={isConnectDisabled}
             className="flex-1 bg-amber-500 hover:bg-amber-600 disabled:bg-zinc-800 disabled:text-zinc-600 text-zinc-950 font-bold py-1.5 px-3 rounded-lg text-xs transition"
           >
             Connect
           </button>
           <button
             onClick={onDisconnect}
-            disabled={status === 'IDLE'}
+            disabled={isDisconnectDisabled}
             className="flex-1 bg-zinc-850 hover:bg-zinc-800 disabled:bg-zinc-900 disabled:text-zinc-700 text-zinc-300 font-bold py-1.5 px-3 rounded-lg text-xs border border-zinc-800 transition"
           >
             Disconnect
@@ -61,9 +72,9 @@ export const Controls: React.FC<ControlsProps> = ({
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            disabled={status !== 'LIVE' && status !== 'RESUMING'}
+            disabled={isInputDisabled}
             placeholder={
-              status === 'LIVE'
+              mounted && status === 'LIVE'
                 ? 'Ask the AI agent anything...'
                 : 'Connect first to enable prompt submission'
             }
@@ -71,7 +82,7 @@ export const Controls: React.FC<ControlsProps> = ({
           />
           <button
             type="submit"
-            disabled={!input.trim() || (status !== 'LIVE' && status !== 'RESUMING')}
+            disabled={isSendDisabled}
             className="bg-zinc-850 border border-zinc-800 hover:bg-zinc-800 text-zinc-200 disabled:bg-zinc-900 disabled:text-zinc-700 font-bold py-1.5 px-4 rounded-lg text-xs transition"
           >
             Send

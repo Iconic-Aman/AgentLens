@@ -10,8 +10,17 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ status, lastSeq }) => {
-  const getStatusColor = (currentStatus: ConnectionStatus) => {
-    switch (currentStatus) {
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const currentStatus = mounted ? status : 'IDLE';
+  const currentSeq = mounted ? lastSeq : 0;
+
+  const getStatusColor = (statusVal: ConnectionStatus) => {
+    switch (statusVal) {
       case 'LIVE':
         return 'bg-emerald-500 text-emerald-100 border-emerald-500/30';
       case 'RESUMING':
@@ -49,11 +58,11 @@ export const Header: React.FC<HeaderProps> = ({ status, lastSeq }) => {
 
         {/* Right Side: Status Badge */}
         <div className="flex items-center space-x-3">
-          <span className="text-[10px] text-zinc-500 font-mono">Seq: {lastSeq}</span>
+          <span className="text-[10px] text-zinc-500 font-mono">Seq: {currentSeq}</span>
 
-          <div className={`px-3 py-1 rounded-full text-xs font-mono font-bold border ${getStatusColor(status)} flex items-center space-x-1.5`}>
-            <span className={`w-1.5 h-1.5 rounded-full bg-current ${status === 'CONNECTING' || status === 'RECONNECTING' || status === 'RESUMING' ? 'animate-ping' : ''}`} />
-            <span>{status}</span>
+          <div className={`px-3 py-1 rounded-full text-xs font-mono font-bold border ${getStatusColor(currentStatus)} flex items-center space-x-1.5`}>
+            <span className={`w-1.5 h-1.5 rounded-full bg-current ${currentStatus === 'CONNECTING' || currentStatus === 'RECONNECTING' || currentStatus === 'RESUMING' ? 'animate-ping' : ''}`} />
+            <span>{currentStatus}</span>
           </div>
         </div>
       </div>
