@@ -115,12 +115,13 @@ export const TraceTimeline: React.FC<TraceTimelineProps> = ({
               return (
                 <div
                   key={virtualRow.key}
+                  ref={rowVirtualizer.measureElement}
+                  data-index={virtualRow.index}
                   style={{
                     position: 'absolute',
                     top: 0,
                     left: 0,
                     width: '100%',
-                    height: `${virtualRow.size}px`,
                     transform: `translateY(${virtualRow.start}px)`,
                   }}
                 >

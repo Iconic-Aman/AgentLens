@@ -2,15 +2,19 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import { Header } from '../components/Header';
-import { Controls } from '../components/Controls';
 import { StreamingText } from '../components/chat/StreamingText';
 import { ToolCallCard } from '../components/chat/ToolCallCard';
-import { TraceTimeline } from '../components/trace/TraceTimeline';
-import { ContextInspector, ContextSnapshotHistoryItem } from '../components/context/ContextInspector';
 import { AgentConnection, ConnectionStatus } from '../lib/ws/connection';
 import { StreamManager, ChatMessage } from '../lib/ws/stream-manager';
 import { TraceManager, TraceEvent } from '../lib/ws/trace-manager';
+
+// Load interactive panels client-side only to prevent HMR hydration mismatches
+const Controls = dynamic(() => import('../components/Controls').then((m) => m.Controls), { ssr: false });
+const TraceTimeline = dynamic(() => import('../components/trace/TraceTimeline').then((m) => m.TraceTimeline), { ssr: false });
+const ContextInspector = dynamic(() => import('../components/context/ContextInspector').then((m) => m.ContextInspector), { ssr: false });
+import type { ContextSnapshotHistoryItem } from '../components/context/ContextInspector';
 
 export default function Home() {
   const [status, setStatus] = useState<ConnectionStatus>('IDLE');
