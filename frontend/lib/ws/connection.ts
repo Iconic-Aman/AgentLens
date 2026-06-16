@@ -97,6 +97,9 @@ export class AgentConnection {
 
   public send(message: ClientMessage): void {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      if (message.type === 'USER_MESSAGE') {
+        this.buffer.reset(1);
+      }
       this.ws.send(JSON.stringify(message));
     }
   }

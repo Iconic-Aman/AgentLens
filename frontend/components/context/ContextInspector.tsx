@@ -1,4 +1,3 @@
-/*
 // components/context/ContextInspector.tsx
 'use client';
 
@@ -26,12 +25,14 @@ export const ContextInspector: React.FC<ContextInspectorProps> = ({
   onIndexChange,
   activeContextId,
 }) => {
+  // Compute diff against preceding snapshot on index or snapshot changes
   const diff = useMemo(() => {
     if (snapshots.length === 0 || currentIndex < 0 || currentIndex >= snapshots.length) {
       return {};
     }
     const current = snapshots[currentIndex].msg.data;
     if (currentIndex === 0) {
+      // Diff against empty object to highlight initial snapshot values as "added"
       return computeJsonDiff({}, current);
     }
     const previous = snapshots[currentIndex - 1].msg.data;
@@ -42,6 +43,7 @@ export const ContextInspector: React.FC<ContextInspectorProps> = ({
 
   return (
     <div className="flex flex-col h-full bg-zinc-900 border border-zinc-800/60 rounded-xl overflow-hidden min-h-[450px]">
+      {/* Header */}
       <div className="border-b border-zinc-800/60 bg-zinc-950/40 p-3 flex items-center justify-between">
         <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider font-mono">
           Context Inspector
@@ -53,6 +55,7 @@ export const ContextInspector: React.FC<ContextInspectorProps> = ({
         )}
       </div>
 
+      {/* Scrubber */}
       <SnapshotScrubber
         currentIndex={currentIndex}
         total={snapshots.length}
@@ -61,6 +64,7 @@ export const ContextInspector: React.FC<ContextInspectorProps> = ({
         currentTimestamp={activeItem?.timestamp}
       />
 
+      {/* State Viewport */}
       <div className="flex-1 p-4 overflow-y-auto max-h-[400px] bg-zinc-950/20">
         {snapshots.length === 0 ? (
           <div className="text-zinc-650 text-xs italic h-full flex flex-col items-center justify-center text-center p-4">
@@ -82,5 +86,3 @@ export const ContextInspector: React.FC<ContextInspectorProps> = ({
     </div>
   );
 };
-*/
-export const ContextInspector = () => null;
