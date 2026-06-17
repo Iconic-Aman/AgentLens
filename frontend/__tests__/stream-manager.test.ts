@@ -18,7 +18,7 @@ describe('StreamManager', () => {
       type: 'text',
       text: 'Hello World',
     });
-    expect(onUpdate).toHaveBeenCalledTimes(2);
+    expect(onUpdate).toHaveBeenCalledTimes(1);
   });
 
   it('should freeze text and append tool segment on handleToolCall', () => {

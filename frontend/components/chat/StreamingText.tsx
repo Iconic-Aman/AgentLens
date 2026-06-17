@@ -3,19 +3,27 @@
 
 import React, { useEffect, useRef } from 'react';
 
+// Shared registry mapping segment IDs (e.g. "streamId_segmentIndex") to their active DOM span elements
+export const activeStreamSpans = new Map<string, HTMLSpanElement>();
+
 interface StreamingTextProps {
-  text: string;
+  streamId: string;
+  initialText: string;
 }
 
-export const StreamingText: React.FC<StreamingTextProps> = React.memo(({ text }) => {
+export const StreamingText: React.FC<StreamingTextProps> = React.memo(({ streamId, initialText }) => {
   const spanRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
-    if (spanRef.current) {
-      // Direct DOM update to bypass virtual DOM tree reconciliation on the text node hot-path
-      spanRef.current.textContent = text;
+    const span = spanRef.current;
+    if (span) {
+      activeStreamSpans.set(streamId, span);
+      span.textContent = initialText;
     }
-  }, [text]);
+    return () => {
+      activeStreamSpans.delete(streamId);
+    };
+  }, [streamId, initialText]);
 
   return (
     <span

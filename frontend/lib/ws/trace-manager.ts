@@ -18,7 +18,8 @@ export interface SingleTraceEvent extends BaseTraceEvent {
     | 'STREAM_END'
     | 'USER_MESSAGE'
     | 'RESUME'
-    | 'TOOL_ACK';
+    | 'TOOL_ACK'
+    | 'FSM_STATUS';
   payload: Record<string, any>;
 }
 
@@ -70,6 +71,34 @@ export class TraceManager {
   public clear(): void {
     this.events = [];
     this.onUpdate();
+  }
+
+  /**
+   * Accumulates a TOKEN message into the current batch without triggering
+   * a React re-render. The batch will appear on the next logEvent() call.
+   */
+  public logTokenSilent(message: { type: 'TOKEN'; stream_id: string; text: string; seq?: number }): void {
+    const timestamp = Date.now();
+    const id = `TOKEN_${timestamp}_${Math.random().toString(36).substr(2, 9)}`;
+    const lastEvent = this.events[this.events.length - 1];
+    if (lastEvent && lastEvent.type === 'TOKEN_BATCH' && lastEvent.stream_id === message.stream_id) {
+      lastEvent.text += message.text;
+      lastEvent.tokenCount += 1;
+      lastEvent.endTime = timestamp;
+    } else {
+      this.events.push({
+        id,
+        type: 'TOKEN_BATCH',
+        stream_id: message.stream_id,
+        tokenCount: 1,
+        text: message.text,
+        timestamp,
+        startTime: timestamp,
+        endTime: timestamp,
+        seq: message.seq,
+      });
+    }
+    // No onUpdate() call — intentionally silent
   }
 
   public logEvent(

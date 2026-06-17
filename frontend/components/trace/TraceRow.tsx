@@ -37,6 +37,8 @@ export const TraceRow: React.FC<TraceRowProps> = ({
         return 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20';
       case 'ERROR':
         return 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+      case 'FSM_STATUS':
+        return 'bg-violet-500/10 text-violet-400 border-violet-500/20';
       default:
         return 'bg-zinc-900 text-zinc-400 border-zinc-800';
     }
@@ -145,6 +147,18 @@ export const TraceRow: React.FC<TraceRowProps> = ({
         {event.type === 'RESUME' && (
           <div>
             last_seq: <span className="text-zinc-300">{event.payload.last_seq}</span>
+          </div>
+        )}
+
+        {event.type === 'FSM_STATUS' && (
+          <div>
+            FSM →{' '}
+            <span className={`font-bold ${
+              event.payload.status === 'RECONNECTING' ? 'text-rose-400' :
+              event.payload.status === 'RESUMING'      ? 'text-amber-400' :
+              event.payload.status === 'LIVE'          ? 'text-emerald-400' :
+              'text-zinc-300'
+            }`}>{event.payload.status}</span>
           </div>
         )}
       </div>

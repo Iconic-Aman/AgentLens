@@ -2,15 +2,19 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import { Header } from '../components/Header';
-import { Controls } from '../components/Controls';
-import { StreamingText } from '../components/chat/StreamingText';
+import { StreamingText, activeStreamSpans } from '../components/chat/StreamingText';
 import { ToolCallCard } from '../components/chat/ToolCallCard';
-import { TraceTimeline } from '../components/trace/TraceTimeline';
-import { ContextInspector, ContextSnapshotHistoryItem } from '../components/context/ContextInspector';
 import { AgentConnection, ConnectionStatus } from '../lib/ws/connection';
 import { StreamManager, ChatMessage } from '../lib/ws/stream-manager';
 import { TraceManager, TraceEvent } from '../lib/ws/trace-manager';
+
+// Load interactive panels client-side only to prevent HMR hydration mismatches
+const Controls = dynamic(() => import('../components/Controls').then((m) => m.Controls), { ssr: false });
+const TraceTimeline = dynamic(() => import('../components/trace/TraceTimeline').then((m) => m.TraceTimeline), { ssr: false });
+const ContextInspector = dynamic(() => import('../components/context/ContextInspector').then((m) => m.ContextInspector), { ssr: false });
+import type { ContextSnapshotHistoryItem } from '../components/context/ContextInspector';
 
 export default function Home() {
   const [status, setStatus] = useState<ConnectionStatus>('IDLE');
@@ -44,32 +48,53 @@ export default function Home() {
     traceManagerRef.current = trace;
 
     const connection = new AgentConnection({
-      onStatusChange: setStatus,
+      onStatusChange: (s) => {
+        setStatus(s);
+        traceManagerRef.current?.logEvent({ type: 'FSM_STATUS', status: s } as any);
+      },
       onMessage: (message) => {
-        setLastSeq(connection.getLastSeq());
-        trace.logEvent(message);
         const anyMsg = message as any;
         const msgType = anyMsg.type;
+
         if (msgType === 'TOKEN') {
+          // Hot path: zero React re-renders — direct DOM write only
           stream.handleToken(anyMsg.stream_id, anyMsg.text);
-        } else if (msgType === 'TOOL_CALL') {
-          stream.handleToolCall(anyMsg.stream_id, anyMsg.call_id, anyMsg.tool_name, anyMsg.args);
-        } else if (msgType === 'TOOL_ACK') {
-          stream.handleToolAck(anyMsg.stream_id, anyMsg.call_id);
-        } else if (msgType === 'TOOL_RESULT') {
-          stream.handleToolResult(anyMsg.stream_id, anyMsg.call_id, anyMsg.result);
-        } else if (msgType === 'CONTEXT_SNAPSHOT') {
-          setSnapshots((prev) => {
-            const nextList = [...prev, { msg: anyMsg, timestamp: Date.now() }];
-            setScrubberIndex((prevIdx) => {
-              if (prevIdx === prev.length - 1 || prev.length === 0) {
-                return nextList.length - 1;
-              }
-              return prevIdx;
+          const msg = stream.getMessages().find((m) => m.stream_id === anyMsg.stream_id);
+          if (msg) {
+            const lastIdx = msg.segments.length - 1;
+            const span = activeStreamSpans.get(`${anyMsg.stream_id}_${lastIdx}`);
+            if (span) {
+              span.textContent = (msg.segments[lastIdx] as any).text;
+            }
+          }
+          // Accumulate into trace batch without triggering a re-render
+          traceManagerRef.current?.logTokenSilent(anyMsg);
+        } else {
+          // All non-TOKEN protocol events: update seq counter + trace + state
+          setLastSeq(connection.getLastSeq());
+          trace.logEvent(message);
+
+          if (msgType === 'TOOL_CALL') {
+            stream.handleToolCall(anyMsg.stream_id, anyMsg.call_id, anyMsg.tool_name, anyMsg.args);
+          } else if (msgType === 'TOOL_ACK') {
+            stream.handleToolAck(anyMsg.stream_id, anyMsg.call_id);
+          } else if (msgType === 'TOOL_RESULT') {
+            stream.handleToolResult(anyMsg.stream_id, anyMsg.call_id, anyMsg.result);
+          } else if (msgType === 'STREAM_END') {
+            setMessages(stream.getMessages());
+          } else if (msgType === 'CONTEXT_SNAPSHOT') {
+            setSnapshots((prev) => {
+              const nextList = [...prev, { msg: anyMsg, timestamp: Date.now() }];
+              setScrubberIndex((prevIdx) => {
+                if (prevIdx === prev.length - 1 || prev.length === 0) {
+                  return nextList.length - 1;
+                }
+                return prevIdx;
+              });
+              return nextList;
             });
-            return nextList;
-          });
-          setActiveContextId(anyMsg.context_id);
+            setActiveContextId(anyMsg.context_id);
+          }
         }
       },
     });
@@ -158,7 +183,12 @@ export default function Home() {
                         <div className="text-[10px] font-mono text-zinc-550 uppercase font-semibold">Agent</div>
                         {message.segments.map((seg, idx) => (
                           <div key={idx}>
-                            {seg.type === 'text' && <StreamingText text={seg.text} />}
+                            {seg.type === 'text' && (
+                              <StreamingText
+                                streamId={`${message.stream_id}_${idx}`}
+                                initialText={seg.text}
+                              />
+                            )}
                             {seg.type === 'tool' && (
                               <ToolCallCard
                                 toolName={seg.tool_name}
