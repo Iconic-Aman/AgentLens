@@ -4,7 +4,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { Header } from '../components/Header';
-import { StreamingText } from '../components/chat/StreamingText';
+import { StreamingText, activeStreamSpans } from '../components/chat/StreamingText';
 import { ToolCallCard } from '../components/chat/ToolCallCard';
 import { AgentConnection, ConnectionStatus } from '../lib/ws/connection';
 import { StreamManager, ChatMessage } from '../lib/ws/stream-manager';
@@ -55,13 +55,27 @@ export default function Home() {
         const anyMsg = message as any;
         const msgType = anyMsg.type;
         if (msgType === 'TOKEN') {
-          stream.handleToken(anyMsg.stream_id, anyMsg.text);
+          const isNewStream = !stream.hasStream(anyMsg.stream_id);
+          stream.handleToken(anyMsg.stream_id, anyMsg.text, isNewStream);
+          if (!isNewStream) {
+            const msg = stream.getMessages().find((m) => m.stream_id === anyMsg.stream_id);
+            if (msg) {
+              const lastIdx = msg.segments.length - 1;
+              const spanId = `${anyMsg.stream_id}_${lastIdx}`;
+              const span = activeStreamSpans.get(spanId);
+              if (span) {
+                span.textContent += anyMsg.text;
+              }
+            }
+          }
         } else if (msgType === 'TOOL_CALL') {
           stream.handleToolCall(anyMsg.stream_id, anyMsg.call_id, anyMsg.tool_name, anyMsg.args);
         } else if (msgType === 'TOOL_ACK') {
           stream.handleToolAck(anyMsg.stream_id, anyMsg.call_id);
         } else if (msgType === 'TOOL_RESULT') {
           stream.handleToolResult(anyMsg.stream_id, anyMsg.call_id, anyMsg.result);
+        } else if (msgType === 'STREAM_END') {
+          setMessages(stream.getMessages());
         } else if (msgType === 'CONTEXT_SNAPSHOT') {
           setSnapshots((prev) => {
             const nextList = [...prev, { msg: anyMsg, timestamp: Date.now() }];
@@ -162,7 +176,12 @@ export default function Home() {
                         <div className="text-[10px] font-mono text-zinc-550 uppercase font-semibold">Agent</div>
                         {message.segments.map((seg, idx) => (
                           <div key={idx}>
-                            {seg.type === 'text' && <StreamingText text={seg.text} />}
+                            {seg.type === 'text' && (
+                              <StreamingText
+                                streamId={`${message.stream_id}_${idx}`}
+                                initialText={seg.text}
+                              />
+                            )}
                             {seg.type === 'tool' && (
                               <ToolCallCard
                                 toolName={seg.tool_name}

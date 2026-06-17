@@ -40,9 +40,14 @@ export class StreamManager {
     this.onUpdate();
   }
 
-  public handleToken(stream_id: string, text: string): void {
+  public hasStream(stream_id: string): boolean {
+    return this.messages.has(stream_id);
+  }
+
+  public handleToken(stream_id: string, text: string, triggerUpdate = true): void {
     const message = this.getOrCreateMessage(stream_id);
     const lastSegment = message.segments[message.segments.length - 1];
+    const isNewSegment = !lastSegment || lastSegment.type !== 'text';
 
     if (lastSegment && lastSegment.type === 'text') {
       lastSegment.text += text;
@@ -53,7 +58,9 @@ export class StreamManager {
       });
     }
     
-    this.onUpdate();
+    if (triggerUpdate || isNewSegment) {
+      this.onUpdate();
+    }
   }
 
   public handleToolCall(
