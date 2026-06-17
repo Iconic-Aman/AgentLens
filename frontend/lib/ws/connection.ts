@@ -46,11 +46,10 @@ export class AgentConnection {
           this.setStatus('LIVE');
         }
 
+        // TOOL_ACK was already sent in onmessage (before the buffer) to beat
+        // the server's 5-second timeout even under chaos latency spikes.
+        // Here we only notify the UI so it can update the tool card status.
         if (message.type === 'TOOL_CALL') {
-          this.send({
-            type: 'TOOL_ACK',
-            call_id: message.call_id,
-          });
           this.onMessageCallback({
             type: 'TOOL_ACK',
             call_id: message.call_id,
@@ -143,7 +142,7 @@ export class AgentConnection {
     this.ws.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data) as ServerMessage;
-        
+
         if (message.type === 'PING') {
           const pong = handlePing(message);
           this.send(pong);
@@ -153,7 +152,15 @@ export class AgentConnection {
             echo: pong.echo,
           } as any);
         }
-        
+
+        // Send TOOL_ACK immediately on raw receipt — before the seq buffer.
+        // Chaos latency spikes delay message *delivery*, so if we wait until
+        // the seq buffer flushes the TOOL_CALL we may already be past the
+        // server's 5-second timeout window.
+        if (message.type === 'TOOL_CALL') {
+          this.send({ type: 'TOOL_ACK', call_id: message.call_id });
+        }
+
         this.buffer.enqueue(message);
       } catch (e) {
         // Ignore malformed JSON or message handling errors

@@ -48,46 +48,53 @@ export default function Home() {
     traceManagerRef.current = trace;
 
     const connection = new AgentConnection({
-      onStatusChange: setStatus,
+      onStatusChange: (s) => {
+        setStatus(s);
+        traceManagerRef.current?.logEvent({ type: 'FSM_STATUS', status: s } as any);
+      },
       onMessage: (message) => {
-        setLastSeq(connection.getLastSeq());
-        trace.logEvent(message);
         const anyMsg = message as any;
         const msgType = anyMsg.type;
+
         if (msgType === 'TOKEN') {
-          const isNewStream = !stream.hasStream(anyMsg.stream_id);
-          stream.handleToken(anyMsg.stream_id, anyMsg.text, isNewStream);
-          if (!isNewStream) {
-            const msg = stream.getMessages().find((m) => m.stream_id === anyMsg.stream_id);
-            if (msg) {
-              const lastIdx = msg.segments.length - 1;
-              const spanId = `${anyMsg.stream_id}_${lastIdx}`;
-              const span = activeStreamSpans.get(spanId);
-              if (span) {
-                span.textContent += anyMsg.text;
-              }
+          // Hot path: zero React re-renders — direct DOM write only
+          stream.handleToken(anyMsg.stream_id, anyMsg.text);
+          const msg = stream.getMessages().find((m) => m.stream_id === anyMsg.stream_id);
+          if (msg) {
+            const lastIdx = msg.segments.length - 1;
+            const span = activeStreamSpans.get(`${anyMsg.stream_id}_${lastIdx}`);
+            if (span) {
+              span.textContent = (msg.segments[lastIdx] as any).text;
             }
           }
-        } else if (msgType === 'TOOL_CALL') {
-          stream.handleToolCall(anyMsg.stream_id, anyMsg.call_id, anyMsg.tool_name, anyMsg.args);
-        } else if (msgType === 'TOOL_ACK') {
-          stream.handleToolAck(anyMsg.stream_id, anyMsg.call_id);
-        } else if (msgType === 'TOOL_RESULT') {
-          stream.handleToolResult(anyMsg.stream_id, anyMsg.call_id, anyMsg.result);
-        } else if (msgType === 'STREAM_END') {
-          setMessages(stream.getMessages());
-        } else if (msgType === 'CONTEXT_SNAPSHOT') {
-          setSnapshots((prev) => {
-            const nextList = [...prev, { msg: anyMsg, timestamp: Date.now() }];
-            setScrubberIndex((prevIdx) => {
-              if (prevIdx === prev.length - 1 || prev.length === 0) {
-                return nextList.length - 1;
-              }
-              return prevIdx;
+          // Accumulate into trace batch without triggering a re-render
+          traceManagerRef.current?.logTokenSilent(anyMsg);
+        } else {
+          // All non-TOKEN protocol events: update seq counter + trace + state
+          setLastSeq(connection.getLastSeq());
+          trace.logEvent(message);
+
+          if (msgType === 'TOOL_CALL') {
+            stream.handleToolCall(anyMsg.stream_id, anyMsg.call_id, anyMsg.tool_name, anyMsg.args);
+          } else if (msgType === 'TOOL_ACK') {
+            stream.handleToolAck(anyMsg.stream_id, anyMsg.call_id);
+          } else if (msgType === 'TOOL_RESULT') {
+            stream.handleToolResult(anyMsg.stream_id, anyMsg.call_id, anyMsg.result);
+          } else if (msgType === 'STREAM_END') {
+            setMessages(stream.getMessages());
+          } else if (msgType === 'CONTEXT_SNAPSHOT') {
+            setSnapshots((prev) => {
+              const nextList = [...prev, { msg: anyMsg, timestamp: Date.now() }];
+              setScrubberIndex((prevIdx) => {
+                if (prevIdx === prev.length - 1 || prev.length === 0) {
+                  return nextList.length - 1;
+                }
+                return prevIdx;
+              });
+              return nextList;
             });
-            return nextList;
-          });
-          setActiveContextId(anyMsg.context_id);
+            setActiveContextId(anyMsg.context_id);
+          }
         }
       },
     });

@@ -44,7 +44,7 @@ export class StreamManager {
     return this.messages.has(stream_id);
   }
 
-  public handleToken(stream_id: string, text: string, triggerUpdate = true): void {
+  public handleToken(stream_id: string, text: string): void {
     const message = this.getOrCreateMessage(stream_id);
     const lastSegment = message.segments[message.segments.length - 1];
     const isNewSegment = !lastSegment || lastSegment.type !== 'text';
@@ -57,8 +57,10 @@ export class StreamManager {
         text: text,
       });
     }
-    
-    if (triggerUpdate || isNewSegment) {
+
+    // Only re-render when a new segment node needs mounting.
+    // Subsequent tokens are written directly to the DOM span (no React re-render).
+    if (isNewSegment) {
       this.onUpdate();
     }
   }
